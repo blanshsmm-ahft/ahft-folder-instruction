@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Инструкция AHFT — структура папок и нейминг</title>
+<style>
+  :root{
+    --paper:#ffffff;
+    --panel:#f6f6f4;
+    --ink:#17191c;
+    --muted:#6a6e76;
+    --line:#e3e4e1;
+    --line-strong:#d2d3cf;
+    --accent:#1f6b58;
+    --accent-soft:#e6f0ec;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  a{ color:var(--accent); text-decoration:none; }
+  a:hover{ text-decoration:underline; text-underline-offset:2px; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 28px; }
+
+  header.site{ padding:44px 0 26px; border-bottom:1px solid var(--line); }
+  header.site h1{
+    margin:0 0 10px;
+    font-size:clamp(28px, 4.2vw, 42px);
+    letter-spacing:-.022em;
+    line-height:1.1;
+    font-weight:650;
+  }
+  .lede{ margin:0; max-width:66ch; color:var(--muted); font-size:clamp(16px,2vw,18px); }
+  .rootlink{ display:inline-flex; align-items:center; gap:8px; margin-top:18px; font-size:15px; }
+  .rootlink svg{ width:15px; height:15px; }
+
+  .page{
+    display:grid;
+    grid-template-columns:352px minmax(0,1fr);
+    gap:52px;
+    align-items:start;
+    padding:36px 0 80px;
+  }
+
+  /* ---- Folder rail ---- */
+  .rail{
+    position:sticky;
+    top:24px;
+    min-width:0;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px 14px 18px;
+  }
+  .rail-head{ padding:2px 6px 14px; border-bottom:1px solid var(--line); margin-bottom:12px; }
+  .rail-head h2{ margin:0 0 4px; font-size:15px; letter-spacing:-.01em; }
+  .rail-head p{ margin:0; font-size:12.5px; color:var(--muted); }
+  .rail-tools{ display:flex; gap:8px; margin-top:12px; }
+  .rail-tools button{
+    font:inherit; font-size:12.5px; color:var(--ink);
+    background:var(--paper); border:1px solid var(--line-strong);
+    border-radius:7px; padding:4px 10px; cursor:pointer;
+  }
+  .rail-tools button:hover{ border-color:var(--muted); }
+
+  .tree, .tree ul{ list-style:none; margin:0; padding:0; }
+  .tree ul.children{ margin-left:9px; padding-left:11px; border-left:1px solid var(--line-strong); }
+  .tree ul.children[hidden]{ display:none; }
+  .tree li{ margin:1px 0; }
+
+  .node{ display:flex; align-items:center; gap:2px; border-radius:6px; }
+  .node:hover{ background:#ececeb; }
+  .twist{
+    flex:0 0 20px; width:20px; height:24px; padding:0; border:0; background:none;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+  }
+  .twist::before{
+    content:""; width:0; height:0;
+    border-left:4.5px solid transparent; border-right:4.5px solid transparent;
+    border-top:6px solid var(--muted);
+    transition:transform .14s ease;
+  }
+  .twist[aria-expanded="false"]::before{ transform:rotate(-90deg); }
+  .twist.leaf{ cursor:default; }
+  .twist.leaf::before{ border-top-color:transparent; }
+
+  .node-link{
+    flex:1 1 auto; display:flex; align-items:center; gap:7px;
+    padding:3px 6px 3px 0; font-family:var(--mono); font-size:12.8px;
+    color:var(--ink); letter-spacing:-.01em; min-width:0;
+  }
+  .node-link:hover{ color:var(--accent); text-decoration:none; }
+  .node-link .nm{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .node-link .ext{
+    flex:0 0 auto; opacity:0; transition:opacity .1s ease; color:var(--accent);
+  }
+  .node-link:hover .ext{ opacity:1; }
+  .node-link.is-example .nm{ color:var(--accent); font-weight:600; }
+  .tag{
+    flex:0 0 auto; font-size:10px; font-family:var(--mono); color:var(--muted);
+    border:1px solid var(--line-strong); border-radius:20px; padding:0 6px; line-height:16px;
+  }
+
+  /* ---- Content ---- */
+  main{ max-width:74ch; min-width:0; }
+  section{ padding-top:34px; scroll-margin-top:20px; }
+  section:first-child{ padding-top:0; }
+  h2{
+    display:flex; align-items:baseline; gap:12px;
+    margin:0 0 16px; font-size:clamp(20px,2.6vw,25px);
+    letter-spacing:-.018em; font-weight:640; line-height:1.2;
+  }
+  h2 .num{
+    font-family:var(--mono); font-size:14px; font-weight:500;
+    color:var(--accent); border-bottom:2px solid var(--accent-soft);
+    min-width:1.4em;
+  }
+  p{ margin:0 0 14px; }
+  ul.plain, ol.plain{ margin:0 0 16px; padding-left:0; list-style:none; }
+  ul.plain li, ol.plain li{ margin:0 0 9px; padding-left:22px; position:relative; }
+  ul.plain li::before{
+    content:""; position:absolute; left:6px; top:.66em;
+    width:5px; height:5px; border-radius:50%; background:var(--line-strong);
+  }
+  ol.plain{ counter-reset:step; }
+  ol.plain li{ counter-increment:step; }
+  ol.plain li::before{
+    content:counter(step); position:absolute; left:0; top:.05em;
+    font-family:var(--mono); font-size:13px; color:var(--accent);
+  }
+  code{
+    font-family:var(--mono); font-size:.88em; background:#f1f1ef;
+    border:1px solid var(--line); border-radius:5px; padding:1px 5px;
+    overflow-wrap:anywhere;
+  }
+  .rule{
+    margin:0 0 16px; padding:14px 18px; background:var(--panel);
+    border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
+    font-size:15px; color:#3b3f45;
+  }
+  .rule p:last-child{ margin:0; }
+  .spec{
+    margin:0 0 18px; border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  }
+  .spec h3{
+    margin:0; padding:11px 16px; font-size:14px; font-weight:600;
+    background:var(--panel); border-bottom:1px solid var(--line);
+  }
+  .spec dl{ margin:0; padding:6px 16px 12px; }
+  .spec dt{
+    font-family:var(--mono); font-size:13px; color:var(--ink); overflow-wrap:anywhere;
+    margin:10px 0 2px; padding-top:10px; border-top:1px dashed var(--line);
+  }
+  .spec dt:first-child{ border-top:0; padding-top:8px; }
+  .spec dd{ margin:0 0 2px; font-size:14.5px; color:#3b3f45; }
+  .spec ol.plain{ margin:0; padding:12px 18px 16px; }
+  .spec ol.plain li{ margin-bottom:7px; }
+  .copy-list{ padding:12px 18px 6px; display:flex; flex-direction:column; gap:9px; }
+  .copy-row{ display:flex; align-items:center; gap:12px; }
+  .copy-label{ flex:0 0 66px; font-size:13px; color:var(--muted); }
+  .copy{ display:inline-flex; align-items:center; gap:9px; font-family:var(--mono); font-size:13.5px; color:var(--ink); background:var(--paper); border:1px solid var(--line-strong); border-radius:8px; padding:6px 11px; cursor:pointer; transition:border-color .12s, color .12s, background .12s; }
+  .copy:hover{ border-color:var(--accent); color:var(--accent); }
+  .copy:active{ transform:translateY(1px); }
+  .copy .copy-ico{ width:15px; height:15px; opacity:.55; }
+  .copy:hover .copy-ico{ opacity:1; }
+  .copy.copied{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+  .copy-hint{ margin:0; padding:10px 18px 14px; font-size:13px; color:var(--muted); }
+  .toast{ position:fixed; left:50%; bottom:26px; transform:translate(-50%,12px); background:var(--ink); color:#fff; font-size:13.5px; padding:9px 16px; border-radius:9px; opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; z-index:40; }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  footer{ border-top:1px solid var(--line); padding:22px 0 60px; color:var(--muted); font-size:13.5px; }
+
+  @media (max-width:900px){
+    .page{ grid-template-columns:minmax(0,1fr); gap:30px; padding-top:26px; }
+    .rail{ position:static; }
+    main{ max-width:none; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{ scroll-behavior:auto; }
+    *{ transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="site">
+    <h1>Инструкция AHFT</h1>
+    <p class="lede">Как устроены папки, как называть файлы и где что лежит. Держи эту страницу под рукой при работе с макетами и ассетами.</p>
+    <a class="rootlink" href="https://drive.google.com/drive/folders/15YwFm5SPCN5PdsM8ZDLiY7fXf8eDs9RA" target="_blank" rel="noopener">
+      Открыть корень в Google Drive
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+    </a>
+  </header>
+
+  <div class="page">
+    <aside class="rail" aria-label="Структура папок">
+      <div class="rail-head">
+        <h2>Структура папок</h2>
+        <p>Клик по папке — открыть её в Google Drive.</p>
+        <div class="rail-tools">
+          <button type="button" id="expand-all">Развернуть всё</button>
+          <button type="button" id="collapse-all">Свернуть</button>
+        </div>
+      </div>
+      <nav class="tree" id="tree"></nav>
+    </aside>
+
+    <main>
+      <section id="s0">
+        <h2><span class="num">00</span>Доступ и установка Google Drive</h2>
+        <p>Все материалы проекта лежат в папке <a href="https://drive.google.com/drive/folders/15YwFm5SPCN5PdsM8ZDLiY7fXf8eDs9RA" target="_blank" rel="noopener">AHFT Главная папка</a> на Google Диске. Чтобы открыть её, установите приложение Google Drive и войдите в рабочий аккаунт.</p>
+
+        <div class="spec">
+          <h3>Рабочий аккаунт</h3>
+          <div class="copy-list">
+            <div class="copy-row">
+              <span class="copy-label">Логин</span>
+              <button class="copy" type="button" data-copy="darina.prv.save@gmail.com" aria-label="Скопировать логин">
+                <span class="copy-val">darina.prv.save@gmail.com</span>
+                <svg class="copy-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="copy-hint">Нажмите, чтобы скопировать. Если вход не выполняется или нужен пароль — напишите в Telegram: <a href="https://t.me/darinanananana" target="_blank" rel="noopener">@darinanananana</a>.</p>
+        </div>
+
+        <div class="spec">
+          <h3>Установка на Mac</h3>
+          <ol class="plain">
+            <li>Откройте <a href="https://www.google.com/drive/download/" target="_blank" rel="noopener">google.com/drive/download</a> и скачайте «Google Drive для Mac».</li>
+            <li>Откройте загруженный файл <code>.dmg</code> и перетащите Google Drive в папку «Программы».</li>
+            <li>Запустите приложение и войдите в рабочий аккаунт (логин выше).</li>
+            <li>Разрешите доступ к файлам, если система запросит его при первом запуске.</li>
+            <li>Папка появится в Finder → «Google Drive» → «Мой диск» → <code>AHFT Главная папка</code>.</li>
+          </ol>
+        </div>
+
+        <div class="spec">
+          <h3>Установка на Windows</h3>
+          <ol class="plain">
+            <li>Откройте <a href="https://www.google.com/drive/download/" target="_blank" rel="noopener">google.com/drive/download</a> и скачайте «Google Drive для компьютера».</li>
+            <li>Запустите установщик <code>GoogleDriveSetup.exe</code> и следуйте подсказкам.</li>
+            <li>Войдите в рабочий аккаунт (логин выше).</li>
+            <li>Папка появится в Проводнике → «Google Drive» → «Мой диск» → <code>AHFT Главная папка</code>.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="s1">
+        <h2><span class="num">01</span>Корневая структура</h2>
+        <p>Все материалы проекта хранятся в корневой папке <a href="https://drive.google.com/drive/folders/15YwFm5SPCN5PdsM8ZDLiY7fXf8eDs9RA" target="_blank" rel="noopener">AHFT Главная папка</a>. Внутри неё есть рабочие и вспомогательные разделы.</p>
+        <p><strong>Основные рабочие разделы:</strong></p>
+        <ul class="plain">
+          <li><a href="https://drive.google.com/drive/folders/16EWoDXq1h-UzkWNqCcN_An8JJIrPQRgN" target="_blank" rel="noopener">Design</a> — основная рабочая папка дизайнеров. Здесь создаём, храним исходники и ведём работу над макетами (разбор — в разделе 02).</li>
+          <li><a href="https://drive.google.com/drive/folders/1UXV4nwI4ndV_fcSG0zg51ac6jZD14V0A" target="_blank" rel="noopener">AHF Tobacco Content Bank</a> — банк готового контента в общем доступе. Утверждённые визуалы для партнёров и готовые ассеты для работы (логотипы, рендеры упаковок, постеры ароматов). Разбор — в разделе 03.</li>
+          <li><a href="https://drive.google.com/drive/folders/1-xkd7GUjLiWxYnwgEKyMEoqYAX7inSTU" target="_blank" rel="noopener">Мероприятия</a> — архив фото- и видеоматериалов с выставок, обучений, съёмок и внутренних ивентов. Внутри делится по годам (2025, 2026). Хорошо подходит для референсов, фонов и материалов для SMM.</li>
+        </ul>
+        <p><strong>Вспомогательные разделы:</strong></p>
+        <ul class="plain">
+          <li><a href="https://drive.google.com/drive/folders/1pWzMMjCp8f1rEOm_hMsw6F_CCaImdzu5" target="_blank" rel="noopener">AHFT Wiki</a> — база знаний компании (структура на Тильде, презентации, конкурентный анализ).</li>
+          <li><a href="https://drive.google.com/drive/folders/1v7SAopsVKrAsr5OZBnr9V2KhzAusQNn2" target="_blank" rel="noopener">SMM</a> — материалы для соцсетей: блогеры, идеи по контенту, планы.</li>
+          <li><a href="https://drive.google.com/drive/folders/1Pxj7AR6V93fWhV6vbpGUmUGHxkJmAZ4a" target="_blank" rel="noopener">Брендинг</a> — презентации по айдентике и бренду.</li>
+          <li><a href="https://drive.google.com/drive/folders/1ykqXSAmuV8Whb-z19eRIJgFzwcsqN2x8" target="_blank" rel="noopener">Коммерция</a> — POS-листы, аналитика по конкурентам, тренинги.</li>
+          <li><a href="https://drive.google.com/drive/folders/1tvmc0CtzqvXDnKJKsXF-iDvtUZcybnW6" target="_blank" rel="noopener">Мерч и комьюнити менеджмент</a> — концепции мерча, боксов, работа с блогерами.</li>
+          <li><a href="https://drive.google.com/drive/folders/1dmDN8P_LcwkOsVxTfZcsXR04qcly0VLG" target="_blank" rel="noopener">Файлы конкурентов</a> — референсы и брендбуки конкурентов.</li>
+          <li><a href="https://drive.google.com/drive/folders/1DM-_f54pd3AdICaW7wxDu7KEx26EZTdn" target="_blank" rel="noopener">Файлы партнеров</a> — материалы партнёров.</li>
+        </ul>
+        <div class="rule"><p>Бренд в именах фиксируем единообразно — <strong>AHFT</strong>, кроме исторической папки <code>AHF Tobacco Content Bank</code>.</p></div>
+      </section>
+
+      <section id="s2">
+        <h2><span class="num">02</span>Рабочая папка Design</h2>
+        <p>Проекты разделены на четыре направления:</p>
+        <ul class="plain">
+          <li><a href="https://drive.google.com/drive/folders/1I2JINBitNTk2xllwImPPFIRzV4z5WZRy" target="_blank" rel="noopener">Partnership</a> — проекты с партнёрами.</li>
+          <li><a href="https://drive.google.com/drive/folders/1nVDZgMDCOZVLGc7an2EvlgaZ0gbzs2di" target="_blank" rel="noopener">Tobacco Products</a> — всё, что связано с табаками Blansh и Nuar.</li>
+          <li><a href="https://drive.google.com/drive/folders/1ltHmZp58oye29TZT6wy2xpXUxSxzTGgQ" target="_blank" rel="noopener">Corporate identity</a> — айдентика компании AHFT и линеек Blansh/Nuar (без деления по годам).</li>
+          <li><a href="https://drive.google.com/drive/folders/1FX3-dmzabjWlraaucrjRplRGUs7PcXTB" target="_blank" rel="noopener">Factory</a> — всё, что связано с заводом (например, информационные таблички).</li>
+        </ul>
+        <p><strong>Сортировка по годам.</strong> В Partnership, Tobacco Products и Factory ведём хронологию: с началом нового года создаётся отдельная папка (2025, 2026 и т.д.). Годы пишем только цифрами, без префиксов и многоточий (<code>2024</code>, а не <code>…2024</code>).</p>
+        <p>Пример пути: <code>Design &gt; Partnership &gt; 2026</code></p>
+        <p><strong>Структура Tobacco Products</strong> — самая объёмная, внутри два раздела:</p>
+        <ul class="plain">
+          <li><strong>Package</strong> — всё про упаковку обеих линеек (Blansh и Nuar): наклейки, стикеры, фольга, 3D-рендеры и т.д. Динамическая, постоянно пополняется.</li>
+          <li><strong>Promotion</strong> — макеты маркетинговых активностей: POSM, комплектующие для кальяна, коммерческие предложения, визитки, имиджевые фотосъёмки, SMM, презентационные боксы, мерч и др. Динамическая, постоянно пополняется.</li>
+        </ul>
+        <p>Правило: под новую задачу внутри раздела создаётся отдельная папка с максимально понятным названием.</p>
+      </section>
+
+      <section id="s3">
+        <h2><span class="num">03</span>AHF Tobacco Content Bank</h2>
+        <p>Банк готового контента для партнёров и работы. Три главные папки:</p>
+        <ul class="plain">
+          <li><a href="https://drive.google.com/drive/folders/1dB3pRXewBs8q8X6OyovnzacCxUYUflRC" target="_blank" rel="noopener">01_Логотипы</a> — логотипы AHFT, Blansh и Nuar в PNG и SVG, включая инверсию.</li>
+          <li><a href="https://drive.google.com/drive/folders/1h63U7waA4SJJ90R3fhTvACcT9HmJ1UZA" target="_blank" rel="noopener">02_Рендеры упаковок</a> — рендеры по линейкам (Blansh, Nuar), весу (25, 100, 200 г) и всем ароматам из релиза.</li>
+          <li><a href="https://drive.google.com/drive/folders/18nsytsQvDssorn1DO0zm9iWu-EpF1NNI" target="_blank" rel="noopener">03_Постеры ароматов</a> — постеры по линейкам и форматам: <code>1x1 (web-app)</code>, <code>4x5</code> и <code>9x16</code>.</li>
+        </ul>
+        <div class="rule"><p>Форматы пишем единообразно, латинской <code>x</code>: <code>1x1</code>, <code>4x5</code>, <code>9x16</code> — а не <code>4х5</code> / <code>9х16</code>.</p></div>
+      </section>
+
+      <section id="s4">
+        <h2><span class="num">04</span>Анатомия папки с задачей</h2>
+        <p>Разберём на примере: <a href="https://drive.google.com/drive/folders/1L8Kd_OiwXCNjNNQDCCnS6Fm3q9rYdS2h" target="_blank" rel="noopener"><code>Design &gt; Tobacco Products &gt; 2026 &gt; Promotion &gt; POSM &gt; Бренд-лист</code></a>.</p>
+        <p><strong>Внутри папки задачи обязательны:</strong></p>
+        <ul class="plain">
+          <li><strong>Актуальный редактируемый файл</strong> — лежит прямо в корне папки задачи, вне подпапок.</li>
+          <li><code>_assets</code> — ресурсы: шрифты, линки (связанные файлы), референсы, логотипы.</li>
+        </ul>
+        <p><strong>Добавляются по мере необходимости:</strong></p>
+        <ul class="plain">
+          <li><code>_aw</code> — архив итераций. Создаётся, когда появляется вторая версия файла. Здесь лежат все прошлые версии с нумерацией в скобках; текущая версия всегда остаётся в корне без номера.</li>
+          <li><code>_print</code> — препресс. Только финальный макет, который уходит в типографию.</li>
+          <li><code>_digital</code> — цифровые макеты: готовые экспорты для соцсетей, web и app (баннеры, посты, сторис, рассылки).</li>
+        </ul>
+        <div class="rule"><p>Служебные подпапки внутри задачи называем с подчёркиванием: <code>_aw</code>, <code>_assets</code>, <code>_print</code>, <code>_digital</code> (не <code>aw</code>). Саму папку задачи называем понятно, без подчёркивания.</p></div>
+      </section>
+
+      <section id="s5">
+        <h2><span class="num">05</span>Правила нейминга файлов</h2>
+
+        <div class="spec">
+          <h3>Редактируемый макет (Artwork)</h3>
+          <dl>
+            <dt>aw_название-задачи.расширение</dt>
+            <dd>В корне папки задачи.</dd>
+            <dt>aw_бренд-лист.ai</dt>
+            <dd>Пример исходника.</dd>
+            <dt>aw_бренд-лист(1).ai, aw_бренд-лист(2).ai</dt>
+            <dd>Прошлые версии в <code>_aw</code>: переносим старую версию и добавляем номер в скобках.</dd>
+          </dl>
+        </div>
+
+        <div class="spec">
+          <h3>Печатный макет (Print)</h3>
+          <dl>
+            <dt>print_[линейка-]название-задачи_размер.расширение</dt>
+            <dd>Строго внутри <code>_print</code>. Размер всегда через латинскую <code>x</code>.</dd>
+            <dt>print_бренд-лист_380x190мм.pdf</dt>
+            <dd>Или <code>.tif</code> / <code>.ai</code> — по требованиям типографии.</dd>
+            <dt>print_b-воблер_100x100мм.pdf</dt>
+            <dd>Линейка Blansh (<code>b-</code>) сразу после <code>print_</code>.</dd>
+            <dt>print_n-воблер_100x100мм.pdf</dt>
+            <dd>Линейка Nuar (<code>n-</code>). Если макет общий для обеих линеек — префикс не ставим либо делаем два отдельных файла.</dd>
+          </dl>
+        </div>
+
+        <div class="spec">
+          <h3>Цифровой макет (Digital)</h3>
+          <dl>
+            <dt>digital_название-задачи_платформа_размер.расширение</dt>
+            <dd>Строго внутри <code>_digital</code>. Всегда указываем платформу и размер.</dd>
+            <dt>digital_бренд-лист_instagram-story_1080x1920.jpg</dt>
+            <dd>Сторис для Instagram.</dd>
+            <dt>digital_бренд-лист_facebook-post_1200x628.png</dt>
+            <dd>Пост для Facebook.</dd>
+            <dt>digital_бренд-лист_web-banner_1920x1080.gif</dt>
+            <dd>Баннер для web.</dd>
+          </dl>
+        </div>
+
+        <div class="rule"><p>Размеры: <code>print_</code> — в мм (<code>380x190мм</code>); <code>digital_</code> — в px (<code>1080x1920</code>); постеры и форматы банка — пропорции (<code>1x1</code>, <code>4x5</code>, <code>9x16</code>). В имени <code>aw_</code>-файла размер не указываем: <code>aw_</code> хранит исходник.</p></div>
+      </section>
+
+      <section id="s6">
+        <h2><span class="num">06</span>Гигиена имён и файлов</h2>
+        <ul class="plain">
+          <li>Без хвостовых пробелов в именах. Пример из банка контента: <code>Arbuz_25_AHFT-Nuar</code>, а не <code>Arbuz_25_AHFT-Nuar </code> с пробелом в конце.</li>
+          <li>Единый разделитель размера — латинская <code>x</code> (<code>1080x1920</code>, <code>380x190мм</code>), без смешения с кириллической «х».</li>
+          <li>Годы — только цифрами (<code>2024</code>, <code>2025</code>, <code>2026</code>).</li>
+          <li>Не оставлять в корне задачи лишние черновики и папки без подчёркивания: служебные папки — только <code>_aw</code>, <code>_assets</code>, <code>_print</code>, <code>_digital</code>.</li>
+          <li>Один артворк — одно понятное имя, без <code>final_final_v2</code>.</li>
+        </ul>
+      </section>
+
+      <section id="s7">
+        <h2><span class="num">07</span>Чек-лист работы над задачей</h2>
+        <ol class="plain">
+          <li><strong>Определи путь</strong> — открой нужную категорию (<code>Tobacco Products &gt; 2026 &gt; Promotion</code>).</li>
+          <li><strong>Создай папку</strong> задачи с понятным названием (например, <code>POSM &gt; Бренд-лист</code>).</li>
+          <li><strong>Подготовь структуру</strong> — минимум <code>_assets</code>; при необходимости добавь <code>_aw</code>, <code>_print</code>, <code>_digital</code>.</li>
+          <li><strong>Собери ресурсы</strong> — скинь шрифты, линки и рендеры из AHF Tobacco Content Bank в <code>_assets</code>.</li>
+          <li><strong>Начни работу</strong> — сохрани исходник в корне как <code>aw_бренд-лист.ai</code>.</li>
+          <li><strong>Веди историю</strong> — при первой замене исходника создай <code>_aw</code> и перенеси туда прошлую версию с номером в скобках; текущая версия остаётся в корне без номера.</li>
+          <li><strong>Подготовь к печати</strong> — утверждённый макет экспортируй как <code>print_бренд-лист_380x190мм.pdf</code> в <code>_print</code>.</li>
+          <li><strong>Экспортируй в digital</strong> — сохрани в <code>_digital</code> по формату <code>digital_бренд-лист_instagram-story_1080x1920.jpg</code>.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    Внутренняя инструкция AHFT. Папки в дереве — ссылки на Google Drive, клик открывает их в новой вкладке.
+  </footer>
+</div>
+
+<script>
+(function(){
+  var B = "https://drive.google.com/drive/folders/";
+  var data = [
+    { name:"AHFT Главная папка", id:"15YwFm5SPCN5PdsM8ZDLiY7fXf8eDs9RA", open:true, children:[
+      { name:"Design", id:"16EWoDXq1h-UzkWNqCcN_An8JJIrPQRgN", open:true, children:[
+        { name:"Partnership", id:"1I2JINBitNTk2xllwImPPFIRzV4z5WZRy", children:[
+          { name:"2025", id:"", children:[
+            { name:"S2B", id:"" },
+            { name:"Флейвор", id:"" }
+          ]},
+          { name:"2026", id:"16zyKcUPpfxRIkjc6pidt1Cn9IZrG_P2w" }
+        ]},
+        { name:"Tobacco Products", id:"1nVDZgMDCOZVLGc7an2EvlgaZ0gbzs2di", children:[
+          { name:"2025", id:"15lzDRq129UB0B3HC2JIzLN9FjoZTg82Z" },
+          { name:"2026", id:"18Z0DKZrf86TyBdqVWADMUrLcx0V7R4cO", children:[
+            { name:"Package", id:"1-rQUMH0eGPF0ZPmxxEc9rpnNGJSox2In" },
+            { name:"Promotion", id:"1izfspiHVGGah6IwQ6Z_GuQzFTYD7I0LC", children:[
+              { name:"POSM", id:"1xZZlI_H6C0Doy5g14pQYpFlR7KI3xtms", children:[
+                { name:"Бренд-лист", id:"1L8Kd_OiwXCNjNNQDCCnS6Fm3q9rYdS2h", example:true }
+              ]}
+            ]}
+          ]}
+        ]},
+        { name:"Corporate identity", id:"1ltHmZp58oye29TZT6wy2xpXUxSxzTGgQ" },
+        { name:"Factory", id:"1FX3-dmzabjWlaaucrjRplRGUs7PcXTB" }
+      ]},
+      { name:"AHF Tobacco Content Bank", id:"1UXV4nwI4ndV_fcSG0zg51ac6jZD14V0A", open:true, children:[
+        { name:"01_Логотипы", id:"1dB3pRXewBs8q8X6OyovnzacCxUYUflRC" },
+        { name:"02_Рендеры упаковок", id:"1h63U7waA4SJJ90R3fhTvACcT9HmJ1UZA" },
+        { name:"03_Постеры ароматов", id:"18nsytsQvDssorn1DO0zm9iWu-EpF1NNI" }
+      ]},
+      { name:"Мероприятия", id:"1-xkd7GUjLiWxYnwgEKyMEoqYAX7inSTU" },
+      { name:"AHFT Wiki", id:"1pWzMMjCp8f1rEOm_hMsw6F_CCaImdzu5" },
+      { name:"SMM", id:"1v7SAopsVKrAsr5OZBnr9V2KhzAusQNn2" },
+      { name:"Брендинг", id:"1Pxj7AR6V93fWhV6vbpGUmUGHxkJmAZ4a" },
+      { name:"Коммерция", id:"1ykqXSAmuV8Whb-z19eRIJgFzwcsqN2x8" },
+      { name:"Мерч и комьюнити менеджмент", id:"1tvmc0CtzqvXDnKJKsXF-iDvtUZcybnW6" },
+      { name:"Файлы конкурентов", id:"1dmDN8P_LcwkOsVxTfZcsXR04qcly0VLG" },
+      { name:"Файлы партнеров", id:"1DM-_f54pd3AdICaW7wxDu7KEx26EZTdn" }
+    ]}
+  ];
+
+  var tree = document.getElementById("tree");
+  var toggles = [];
+
+  function nodeUrl(id){
+    return id ? (B + id) : null;
+  }
+
+  function render(nodes, isRoot){
+    var ul = document.createElement("ul");
+    ul.className = isRoot ? "tree-root" : "children";
+    nodes.forEach(function(n){
+      var li = document.createElement("li");
+      var row = document.createElement("div");
+      row.className = "node";
+
+      var hasKids = n.children && n.children.length;
+
+      if (hasKids){
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "twist";
+        btn.setAttribute("aria-expanded", n.open ? "true" : "false");
+        btn.setAttribute("aria-label", (n.open ? "Свернуть " : "Развернуть ") + n.name);
+        row.appendChild(btn);
+      } else {
+        var sp = document.createElement("span");
+        sp.className = "twist leaf";
+        sp.setAttribute("aria-hidden", "true");
+        row.appendChild(sp);
+      }
+
+      var url = nodeUrl(n.id);
+      var link;
+      if (url){
+        link = document.createElement("a");
+        link.className = "node-link" + (n.example ? " is-example" : "");
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener";
+      } else {
+        link = document.createElement("span");
+        link.className = "node-link" + (n.example ? " is-example" : "");
+      }
+      var nm = document.createElement("span");
+      nm.className = "nm";
+      nm.textContent = n.name;
+      link.appendChild(nm);
+      if (url){
+        var ext = document.createElement("span");
+        ext.className = "ext";
+        ext.setAttribute("aria-hidden", "true");
+        ext.textContent = "↗";
+        link.appendChild(ext);
+      } else {
+        var tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = "без ссылки";
+        link.appendChild(tag);
+      }
+      row.appendChild(link);
+      li.appendChild(row);
+
+      if (hasKids){
+        var kids = render(n.children, false);
+        if (!n.open) kids.hidden = true;
+        li.appendChild(kids);
+        var btnRef = row.querySelector(".twist");
+        btnRef.addEventListener("click", function(){
+          var nowOpen = kids.hidden;
+          kids.hidden = !nowOpen;
+          btnRef.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+          btnRef.setAttribute("aria-label", (nowOpen ? "Свернуть " : "Развернуть ") + n.name);
+        });
+      }
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+
+  tree.appendChild(render(data, true));
+
+  function allTwists(){ return Array.prototype.slice.call(tree.querySelectorAll(".twist:not(.leaf)")); }
+  function allChildren(){ return Array.prototype.slice.call(tree.querySelectorAll("ul.children")); }
+
+  document.getElementById("expand-all").addEventListener("click", function(){
+    allTwists().forEach(function(b){ b.setAttribute("aria-expanded","true"); });
+    allChildren().forEach(function(u){ u.hidden = false; });
+  });
+  document.getElementById("collapse-all").addEventListener("click", function(){
+    allTwists().forEach(function(b){ b.setAttribute("aria-expanded","false"); });
+    allChildren().forEach(function(u){ u.hidden = true; });
+  });
+})();
+
+(function(){
+  var toast = document.createElement("div");
+  toast.className = "toast";
+  toast.setAttribute("role","status");
+  document.body.appendChild(toast);
+  var timer;
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(timer);
+    timer = setTimeout(function(){ toast.classList.remove("show"); }, 1500);
+  }
+  function fallbackCopy(text){
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly","");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch(e){}
+    document.body.removeChild(ta);
+    return ok;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".copy"), function(btn){
+    btn.addEventListener("click", function(){
+      var text = btn.getAttribute("data-copy");
+      function done(){
+        btn.classList.add("copied");
+        setTimeout(function(){ btn.classList.remove("copied"); }, 1500);
+        showToast("Скопировано: " + text);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done, function(){ if (fallbackCopy(text)) done(); });
+      } else if (fallbackCopy(text)) { done(); }
+    });
+  });
+})();
+</script>
+</body>
+</html>
